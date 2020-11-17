@@ -40,6 +40,18 @@ export default class LinkTool {
   }
 
   /**
+ * Paste configuration to enable pasted URLs processing by Editor
+ */
+  static get pasteConfig() {
+    return {
+      patterns: {
+        link: /^https?:\/\/.*/
+      }
+    };
+  }
+
+
+  /**
    * Get Tool toolbox settings
    * icon - Tool icon's SVG
    * title - title to show in toolbox
@@ -83,14 +95,13 @@ export default class LinkTool {
     this.nodes = {
       wrapper: null,
       container: null,
-      progress: null,
-      input: null,
-      inputHolder: null,
+      preloader: null,
       linkContent: null,
       linkImage: null,
       linkTitle: null,
       linkDescription: null,
       linkText: null,
+      cancelButton: null,
     };
 
     this._data = {
@@ -112,8 +123,8 @@ export default class LinkTool {
     this.nodes.wrapper = this.make('div', this.CSS.baseClass);
     this.nodes.container = this.make('div', this.CSS.container);
 
-    this.nodes.inputHolder = this.makeInputHolder();
     this.nodes.linkContent = this.prepareLinkPreview();
+    this.nodes.preloader = this.makePreloader();
 
     /**
      * If Tool already has data, render link preview, otherwise insert input
@@ -121,10 +132,12 @@ export default class LinkTool {
     if (Object.keys(this.data.meta).length) {
       this.nodes.container.appendChild(this.nodes.linkContent);
       this.showLinkPreview(this.data.meta);
-    } else {
-      this.nodes.container.appendChild(this.nodes.inputHolder);
+    }
+    else {
+      this.showLinkWithoutPreview();
     }
 
+    this.nodes.container.appendChild(this.nodes.preloader);
     this.nodes.wrapper.appendChild(this.nodes.container);
 
     return this.nodes.wrapper;
@@ -180,95 +193,133 @@ export default class LinkTool {
   get CSS() {
     return {
       baseClass: this.api.styles.block,
-      input: this.api.styles.input,
 
       /**
        * Tool's classes
        */
       container: 'link-tool',
-      inputEl: 'link-tool__input',
-      inputHolder: 'link-tool__input-holder',
-      inputError: 'link-tool__input-holder--error',
       linkContent: 'link-tool__content',
       linkContentRendered: 'link-tool__content--rendered',
       linkImage: 'link-tool__image',
       linkTitle: 'link-tool__title',
       linkDescription: 'link-tool__description',
       linkText: 'link-tool__anchor',
-      progress: 'link-tool__progress',
-      progressLoading: 'link-tool__progress--loading',
-      progressLoaded: 'link-tool__progress--loaded',
+      cancelButton: 'link-tool__cancel-button',
+      preloader: 'link-tool__preloader',
+      preloaderUrl: 'link-tool__preloader-url',
+      preloaderActive: 'link-tool__preloader--active'
     };
   }
 
+  /**
+     * Handle pasted url and return Service object
+     *
+     * @param {PasteEvent} event- event with pasted data
+     * @returns {Service}
+     */
+  onPaste(event) {
+    const { data: url } = event.detail;
+
+    // Start fectching
+
+    this.removeErrorStyle();
+    this.fetchLinkData(url);
+
+    this.showLoading(url);
+  }
+
+  cancelLinkPreview() {
+    this.data.meta = {};
+    this.nodes.container.innerHTML = '';
+
+    this.showLinkWithoutPreview();
+  }
+
+  makeCancelButton() {
+    const el = this.make('div', this.CSS.cancelButton);
+
+    el.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      this.cancelLinkPreview();
+    });
+
+    return el;
+  }
   /**
    * Prepare input holder
    *
    * @returns {HTMLElement}
    */
-  makeInputHolder() {
-    const inputHolder = this.make('div', this.CSS.inputHolder);
+  makePreloader() {
+    const preloader = document.createElement('preloader');
+    const url = document.createElement('div');
 
-    this.nodes.progress = this.make('label', this.CSS.progress);
-    this.nodes.input = this.make('div', [this.CSS.input, this.CSS.inputEl], {
-      contentEditable: !this.readOnly,
-    });
+    url.textContent = this.data.link;
 
-    this.nodes.input.dataset.placeholder = this.api.i18n.t('Link');
+    preloader.classList.add(this.CSS.preloader);
+    url.classList.add(this.CSS.preloaderUrl);
 
-    if (!this.readOnly) {
-      this.nodes.input.addEventListener('paste', (event) => {
-        this.startFetching(event);
-      });
+    preloader.appendChild(url);
 
-      this.nodes.input.addEventListener('keydown', (event) => {
-        const [ENTER, A] = [13, 65];
-        const cmdPressed = event.ctrlKey || event.metaKey;
+    return preloader;
 
-        switch (event.keyCode) {
-          case ENTER:
-            event.preventDefault();
-            event.stopPropagation();
+    // const el = this.make('div', this.CSS.Preloader);
 
-            this.startFetching(event);
-            break;
-          case A:
-            if (cmdPressed) {
-              this.selectLinkUrl(event);
-            }
-            break;
-        }
-      });
-    }
+    // if (!this.readOnly) {
+    //   this.nodes.input.addEventListener('paste', (event) => {
+    //     this.startFetching(event);
+    //   });
 
-    inputHolder.appendChild(this.nodes.progress);
-    inputHolder.appendChild(this.nodes.input);
+    //   this.nodes.input.addEventListener('keydown', (event) => {
+    //     const [ENTER, A] = [13, 65];
+    //     const cmdPressed = event.ctrlKey || event.metaKey;
 
-    return inputHolder;
+    //     switch (event.keyCode) {
+    //       case ENTER:
+    //         event.preventDefault();
+    //         event.stopPropagation();
+
+    //         this.startFetching(event);
+    //         break;
+    //       case A:
+    //         if (cmdPressed) {
+    //           this.selectLinkUrl(event);
+    //         }
+    //         break;
+    //     }
+    //   });
+    // }
+
+    // inputHolder.appendChild(this.nodes.Preloader);
+    // inputHolder.appendChild(this.nodes.input);
+
+    // return inputHolder;
   }
 
-  /**
-   * Activates link data fetching by url
-   *
-   * @param {PasteEvent} event
-   */
-  startFetching(event) {
-    let url = this.nodes.input.textContent;
+  // /**
+  //  * Activates link data fetching by url
+  //  *
+  //  * @param {PasteEvent} event
+  //  */
+  // startFetching(event) {
+  //   let url = this.nodes.input.textContent;
 
-    if (event.type === 'paste') {
-      url = (event.clipboardData || window.clipboardData).getData('text');
-    }
+  //   if (event.type === 'paste') {
+  //     url = (event.clipboardData || window.clipboardData).getData('text');
+  //   }
 
-    this.removeErrorStyle();
-    this.fetchLinkData(url);
-  }
+  //   this.removeErrorStyle();
+  //   this.fetchLinkData(url);
+  // }
 
   /**
    * If previous link data fetching failed, remove error styles
    */
   removeErrorStyle() {
-    this.nodes.inputHolder.classList.remove(this.CSS.inputError);
-    this.nodes.inputHolder.insertBefore(this.nodes.progress, this.nodes.input);
+    // this.nodes.inputHolder.classList.remove(this.CSS.inputError);
+    // this.nodes.inputHolder.insertBefore(this.nodes.Preloader, this.nodes.input);
   }
 
   /**
@@ -276,22 +327,22 @@ export default class LinkTool {
    *
    * @param {KeyboardEvent} event
    */
-  selectLinkUrl(event) {
-    event.preventDefault();
-    event.stopPropagation();
+  // selectLinkUrl(event) {
+  //   event.preventDefault();
+  //   event.stopPropagation();
 
-    const selection = window.getSelection();
-    const range = new Range();
+  //   const selection = window.getSelection();
+  //   const range = new Range();
 
-    const currentNode = selection.anchorNode.parentNode;
-    const currentItem = currentNode.closest(`.${this.CSS.inputHolder}`);
-    const inputElement = currentItem.querySelector(`.${this.CSS.inputEl}`);
+  //   const currentNode = selection.anchorNode.parentNode;
+  //   const currentItem = currentNode.closest(`.${this.CSS.inputHolder}`);
+  //   const inputElement = currentItem.querySelector(`.${this.CSS.inputEl}`);
 
-    range.selectNodeContents(inputElement);
+  //   range.selectNodeContents(inputElement);
 
-    selection.removeAllRanges();
-    selection.addRange(range);
-  }
+  //   selection.removeAllRanges();
+  //   selection.addRange(range);
+  // }
 
   /**
    * Prepare link preview holder
@@ -309,7 +360,23 @@ export default class LinkTool {
     this.nodes.linkDescription = this.make('p', this.CSS.linkDescription);
     this.nodes.linkText = this.make('span', this.CSS.linkText);
 
+    if (!this.readOnly)
+      this.nodes.cancelButton = this.makeCancelButton();
+
     return holder;
+  }
+
+  showLinkWithoutPreview() {
+    const el = this.make('a', '', {
+      target: '_blank',
+      rel: 'nofollow noindex noreferrer'
+    });
+
+    el.setAttribute('href', this.data.link);
+    el.innerText = this.data.link;
+
+    this.nodes.container.appendChild(el);
+    // this.nodes.wrapper.contentEditable = true;
   }
 
   /**
@@ -319,7 +386,7 @@ export default class LinkTool {
    */
   showLinkPreview({ image, title, description }) {
     this.nodes.container.appendChild(this.nodes.linkContent);
-
+    console.log(image && image.url);
     if (image && image.url) {
       this.nodes.linkImage.style.backgroundImage = 'url(' + image.url + ')';
       this.nodes.linkContent.appendChild(this.nodes.linkImage);
@@ -339,6 +406,9 @@ export default class LinkTool {
     this.nodes.linkContent.setAttribute('href', this.data.link);
     this.nodes.linkContent.appendChild(this.nodes.linkText);
 
+    if (!this.readOnly)
+      this.nodes.linkContent.appendChild(this.nodes.cancelButton);
+
     try {
       this.nodes.linkText.textContent = (new URL(this.data.link)).hostname;
     } catch (e) {
@@ -346,31 +416,21 @@ export default class LinkTool {
     }
   }
 
-  /**
-   * Show loading progressbar
-   */
-  showProgress() {
-    this.nodes.progress.classList.add(this.CSS.progressLoading);
+  showLoading(url) {
+    this.nodes.preloader.classList.add(this.CSS.preloaderActive);
+    this.nodes.preloader.querySelector('.' + this.CSS.preloaderUrl).innerText = url;
   }
 
-  /**
-   * Hide loading progressbar
-   */
-  hideProgress() {
-    return new Promise((resolve) => {
-      this.nodes.progress.classList.remove(this.CSS.progressLoading);
-      this.nodes.progress.classList.add(this.CSS.progressLoaded);
-
-      setTimeout(resolve, 500);
-    });
+  hideLoading() {
+    this.nodes.preloader.classList.remove(this.CSS.preloaderActive);
   }
 
   /**
    * If data fetching failed, set input error style
    */
   applyErrorStyle() {
-    this.nodes.inputHolder.classList.add(this.CSS.inputError);
-    this.nodes.progress.remove();
+    // this.nodes.inputHolder.classList.add(this.CSS.inputError);
+    // this.nodes.Preloader.remove();
   }
 
   /**
@@ -379,20 +439,23 @@ export default class LinkTool {
    * @param {string} url - link source url
    */
   async fetchLinkData(url) {
-    this.showProgress();
+    this.showLoading();
     this.data = { link: url };
 
     try {
       const { body } = await (ajax.get({
         url: this.config.endpoint,
         data: {
-          url,
+          url
         },
       }));
 
-      this.onFetch(body);
+      this.hideLoading();
+      this.onFetch(url, body);
     } catch (error) {
-      this.fetchingFailed(this.api.i18n.t('Couldn\'t fetch the link data'));
+      console.error(error);
+      this.hideLoading();
+      this.fetchingFailed(url, this.api.i18n.t('Couldn\'t fetch the link data'));
     }
   }
 
@@ -401,9 +464,9 @@ export default class LinkTool {
    *
    * @param {UploadResponseFormat} response
    */
-  onFetch(response) {
+  onFetch(url, response) {
     if (!response || !response.success) {
-      this.fetchingFailed(this.api.i18n.t('Couldn\'t get this link data, try the other one'));
+      this.fetchingFailed(url, this.api.i18n.t('Couldn\'t get this link data, try the other one'));
 
       return;
     }
@@ -413,15 +476,13 @@ export default class LinkTool {
     this.data = { meta: metaData };
 
     if (!metaData) {
-      this.fetchingFailed(this.api.i18n.t('Wrong response format from the server'));
+      this.fetchingFailed(url, this.api.i18n.t('Wrong response format from the server'));
 
       return;
     }
 
-    this.hideProgress().then(() => {
-      this.nodes.inputHolder.remove();
-      this.showLinkPreview(metaData);
-    });
+    this.hideLoading();
+    this.showLinkPreview(metaData);
   }
 
   /**
@@ -431,12 +492,13 @@ export default class LinkTool {
    *
    * @param {string} errorMessage
    */
-  fetchingFailed(errorMessage) {
+  fetchingFailed(url, errorMessage) {
     this.api.notifier.show({
       message: errorMessage,
-      style: 'error',
+      style: 'error'
     });
 
+    this.showLinkWithoutPreview(url);
     this.applyErrorStyle();
   }
 
