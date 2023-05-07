@@ -29,7 +29,7 @@ import polyfill from 'url-polyfill';
  * Tool may have any data provided by backend, currently are supported by design:
  * title, description, image, url
  */
-export default class LinkTool {
+export default class PluginTool {
   /**
    * Notify core that read-only mode supported
    *
@@ -61,7 +61,7 @@ export default class LinkTool {
   static get toolbox() {
     return {
       icon: ToolboxIcon,
-      title: 'Link',
+      title: 'Plugin',
     };
   }
 
@@ -151,6 +151,8 @@ export default class LinkTool {
    * @returns {LinkToolData}
    */
   save() {
+    console.log('save', this.data);
+    console.dir(this.data);
     return this.data;
   }
 

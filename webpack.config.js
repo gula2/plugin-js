@@ -34,7 +34,7 @@ module.exports = {
     path: path.join(__dirname, '/dist'),
     publicPath: '/',
     filename: 'bundle.js',
-    library: 'LinkTool',
+    library: 'PluginTool',
     libraryExport: 'default',
     libraryTarget: 'umd'
   }
