@@ -1,6 +1,6 @@
 {
-  "name": "@gula2/plugin-js",
-  "version": "2.3.2",
+  "name": "@dewebio/plugin-js",
+  "version": "0.0.1",
   "keywords": [
     "codex editor",
     "tool",
@@ -8,11 +8,11 @@
     "editor.js",
     "editor"
   ],
-  "description": "Link Tool for Editor.js",
+  "description": "plugin Tool for Editor.js",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/editor-js/link.git"
+    "url": "git+https://github.com/dewebio/plugin-js.git"
   },
   "main": "./dist/bundle.js",
   "scripts": {
@@ -43,9 +43,9 @@
     "webpack-cli": "^3.3.11"
   },
   "bugs": {
-    "url": "https://github.com/editor-js/link/issues"
+    "url": "https://github.com/dewebio/plugin-js/issues"
   },
-  "homepage": "https://github.com/editor-js/link#readme",
+  "homepage": "https://github.com/editdewebio/plugin-js#readme",
   "dependencies": {
     "@babel/runtime": "^7.10.2"
   }
