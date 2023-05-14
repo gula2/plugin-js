@@ -1,6 +1,6 @@
 /**
- * @typedef {object} LinkToolData
- * @description Link Tool's input and output data format
+ * @typedef {object} Plugin ToolData
+ * @description Plugin Tool's input and output data format
  * @property {string} link — data url
  * @property {metaData} meta — fetched link data
  */
@@ -39,17 +39,17 @@ export default class PluginTool {
     return true;
   }
 
+
   /**
  * Paste configuration to enable pasted URLs processing by Editor
  */
   static get pasteConfig() {
     return {
       patterns: {
-        link: /^https?:\/\/.*/
+        link: /http(?:s?):\/\/(?:www\.)?subbscribe.com\/product\/.*/
       }
     };
-  }
-
+  }  
 
   /**
    * Get Tool toolbox settings
@@ -59,10 +59,10 @@ export default class PluginTool {
    * @returns {{icon: string, title: string}}
    */
   static get toolbox() {
-    return {
-      icon: ToolboxIcon,
-      title: 'Plugin',
-    };
+    // return {
+    //   icon: ToolboxIcon,
+    //   title: 'Plugin',
+    // };
   }
 
   /**
@@ -90,6 +90,8 @@ export default class PluginTool {
      */
     this.config = {
       endpoint: config.endpoint || '',
+      pluginEndpoints: config.pluginEndpoints || {},
+      endpointsPasteRegex: config.endpointsPasteRegex || {},
     };
 
     this.nodes = {
@@ -111,6 +113,8 @@ export default class PluginTool {
 
     this.data = data;
   }
+
+
 
   /**
    * Renders Block content
@@ -143,6 +147,10 @@ export default class PluginTool {
     return this.nodes.wrapper;
   }
 
+  rendered() {
+
+  }
+
   /**
    * Return Block data
    *
@@ -151,8 +159,6 @@ export default class PluginTool {
    * @returns {LinkToolData}
    */
   save() {
-    console.log('save', this.data);
-    console.dir(this.data);
     return this.data;
   }
 
@@ -165,6 +171,8 @@ export default class PluginTool {
    * @returns {boolean} false if saved data is incorrect, otherwise true
    */
   validate() {
+    console.log('plagin validate (need blocked endpoints)', this.config.pluginEndpoints, link);
+    //this.nodes.wrapper.remove();
     return this.data.link.trim() !== '';
   }
 
@@ -223,7 +231,6 @@ export default class PluginTool {
     const { data: url } = event.detail;
 
     // Start fectching
-
     this.removeErrorStyle();
     this.fetchLinkData(url);
 
@@ -457,7 +464,7 @@ export default class PluginTool {
     } catch (error) {
       console.error(error);
       this.hideLoading();
-      this.fetchingFailed(url, this.api.i18n.t('Couldn\'t fetch the link data'));
+      this.fetchingFailed(url, this.api.i18n.t('Couldn\'t fetch the plugin data'));
     }
   }
 
@@ -468,7 +475,7 @@ export default class PluginTool {
    */
   onFetch(url, response) {
     if (!response || !response.success) {
-      this.fetchingFailed(url, this.api.i18n.t('Couldn\'t get this link data, try the other one'));
+      this.fetchingFailed(url, this.api.i18n.t('Couldn\'t get this plugin data, try the other one'));
 
       return;
     }

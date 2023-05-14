@@ -17,7 +17,7 @@
   "main": "./dist/bundle.js",
   "scripts": {
     "build": "webpack --mode production",
-    "build-and-copy": "npm run build && cp -f /Users/developer/work/link/dist/bundle.js /Users/developer/work/CreatorApp/Frontend/node_modules/@editorjs/link/dist/bundle.js",
+    "build-and-copy": "npm run build && cp -f /Users/gula/projects/plugin-js/dist/bundle.js /Users/gula/projects/CreatorApp/Frontend/node_modules/@dewebio/plugin/dist/bundle.js && cd ../CreatorApp/frontend && npm run dev:creator-stage",
     "build:dev": "webpack --mode development --watch"
   },
   "author": "CodeX <team@codex.so>",
